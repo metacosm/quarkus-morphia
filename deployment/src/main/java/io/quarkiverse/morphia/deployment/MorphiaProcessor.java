@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -201,8 +202,18 @@ public class MorphiaProcessor {
     }
 
     private void registerSubclasses(Index index, List<String> forReflection, DotName type) {
+        // Wrapper that initializes the visited set to avoid infinite recursion and duplicates
+        registerSubclasses(index, forReflection, type, new HashSet<>());
+    }
+
+    private void registerSubclasses(Index index, List<String> forReflection, DotName type, Set<DotName> visited) {
+        // If we've already processed this type, avoid re-processing to prevent cycles/duplicates
+        if (!visited.add(type)) {
+            return;
+        }
         forReflection.add(type.toString());
-        index.getAllKnownSubclasses(type).forEach(codec -> registerSubclasses(index, forReflection, type));
+        index.getAllKnownSubclasses(type)
+                .forEach(codec -> registerSubclasses(index, forReflection, codec.name(), visited));
     }
 
     private void registerWrapperArrays(BuildProducer<ReflectiveClassBuildItem> reflectiveClasses) {
